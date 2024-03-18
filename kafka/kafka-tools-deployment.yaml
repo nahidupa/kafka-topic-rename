@@ -1,0 +1,26 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-tools-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-tools-deployment
+  template:
+    metadata:
+      labels:
+        app: kafka-tools-deployment
+    spec:
+      containers:
+        - name: kafka-tools
+          image: confluentinc/cp-kafka:7.6.0
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for Kafka to be ready..."
+              cub kafka-ready -b broker:9092 1 40
+              sleep 3600  # Sleep for an hour (adjust as needed)
+      restartPolicy: Always

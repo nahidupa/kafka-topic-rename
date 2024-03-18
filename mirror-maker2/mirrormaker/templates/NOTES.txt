@@ -1,0 +1,1 @@
+Kafka topic rename process is configured successfully.

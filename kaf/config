@@ -1,0 +1,12 @@
+current-cluster: ""
+clusteroverride: ""
+clusters:
+- name: local
+  version: ""
+  brokers:
+  - kafka-service:9092
+  SASL: null
+  TLS: null
+  security-protocol: ""
+  schema-registry-url: ""
+  schema-registry-credentials: null

@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kaf-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kaf-deployment
+  template:
+    metadata:
+      labels:
+        app: kaf-deployment
+    spec:
+      containers:
+        - name: kaf
+          image: nahidupa/kaf:0.0.6
+
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for Kafka to be ready..."
+              cub kafka-ready -b broker:9092 1 40
+              sleep 3600  # Sleep for an hour (adjust as needed)
+      restartPolicy: Always

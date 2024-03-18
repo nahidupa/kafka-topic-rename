@@ -1,0 +1,117 @@
+---
+# https://strimzi.io/docs/operators/latest/configuring.html#type-KafkaMirrorMaker2-reference
+
+{{- $sourcePrefix := "source" }}
+{{- $targetPrefix := "target" }}
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaMirrorMaker2
+metadata:
+  name: {{ $.Release.Name }}
+  labels: {{- include "mirrormaker-ks.labels" $ | nindent 4 }}
+spec:
+  version: {{ $.Values.connectorVersion }}
+  replicas: {{ $.Values.replicaCount }}
+  image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+  jvmOptions:
+    "-Xmx": "3g"
+    "-Xms": "1g"
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "150m"
+    limits:
+      memory: "4Gi"
+      cpu: "1000m"
+  connectCluster: {{ $.Release.Name }}
+  clusters:
+  - alias: {{ $.Release.Name }}
+    bootstrapServers: {{ $.Values.bootstrapServers }}
+    config:
+      config.storage.topic: {{ $.Release.Name }}-connect-cluster-mirrormaker2-cluster-configs
+      status.storage.topic: {{ $.Release.Name }}-connect-cluster-mirrormaker2-cluster-status
+      offset.storage.topic: {{ $.Release.Name }}-connect-cluster-mirrormaker2-cluster-offsets
+      config.storage.replication.factor: 3
+      offset.storage.replication.factor: 3
+      status.storage.replication.factor: 3
+{{- range $index, $topic := $.Values.topics }}
+  - alias: {{ template "generateAlias" (list $index $sourcePrefix $topic.source) }}
+    bootstrapServers: {{ $.Values.bootstrapServers }}
+    config:
+      config.storage.topic: {{ $topic.source }}-mirrormaker2-cluster-configs
+      status.storage.topic: {{ $topic.source }}-mirrormaker2-cluster-status
+      offset.storage.topic: {{ $topic.source }}-mirrormaker2-cluster-offsets
+      config.storage.replication.factor: 3
+      offset.storage.replication.factor: 3
+      status.storage.replication.factor: 3
+  - alias: {{ template "generateAlias" (list $index $targetPrefix $topic.target) }}
+    bootstrapServers: {{ $.Values.bootstrapServers }}
+    config:
+      config.storage.topic: {{ $topic.target }}-mirrormaker2-cluster-configs
+      status.storage.topic: {{ $topic.target }}-mirrormaker2-cluster-status
+      offset.storage.topic: {{ $topic.target }}-mirrormaker2-cluster-offsets
+      config.storage.replication.factor: 3
+      offset.storage.replication.factor: 3
+      status.storage.replication.factor: 3
+{{- end }}
+  mirrors:
+{{- range $index, $topic := $.Values.topics }}
+  - sourceCluster: {{ template "generateAlias" (list $index $sourcePrefix $topic.source) }}
+    targetCluster: {{ template "generateAlias" (list $index $targetPrefix $topic.target) }}
+    sourceConnector:
+      tasksMax: {{ $topic.numberOfPartitions }}
+      autoRestart:
+        enabled: false
+      config:
+        source.topic.name: {{ $topic.source }}
+        target.topic.name: {{ $topic.target }}
+        replication.factor: {{ $topic.replicationFactor }}
+        offset-syncs.topic.replication.factor: 3
+        sync.topic.acls.enabled: false
+        replication.policy.class: "com.custom.topicrename.CustomReplicationPolicy"
+        producer.override.batch.size: 327680
+        producer.override.linger.ms: 100
+        producer.request.timeout.ms: 30000
+        consumer.fetch.max.bytes: 52428800
+        refresh.topics.interval.seconds: 5
+    heartbeatConnector:
+      autoRestart:
+          enabled: false
+      config:
+        source.topic.name: {{ $topic.source }}
+        target.topic.name: {{ $topic.target }}
+        emit.heartbeats.enabled: true
+        emit.heartbeats.interval.seconds: 60
+        heartbeats.topic.replication.factor: 3
+        producer.override.request.timeout.ms: 30000
+        replication.policy.class: "com.custom.topicrename.CustomReplicationPolicy"
+    checkpointConnector:
+      autoRestart:
+          enabled: false
+      config:
+        source.topic.name: {{ $topic.source }}
+        target.topic.name: {{ $topic.target }}
+        emit.checkpoints.enabled: true
+        emit.checkpoints.interval.seconds: 60
+        offset-syncs.topic.replication.factor: 3
+        sync.group.offsets.enabled: true
+        sync.group.offsets.interval.seconds: 120
+        refresh.groups.interval.seconds: 120
+        replication.policy.class: "com.custom.topicrename.CustomReplicationPolicy"
+        producer.override.request.timeout.ms: 30000
+        consumer.max.poll.interval.ms: 300000
+    topicsPattern: {{ $topic.source }}
+    groupsPattern: ".*"
+    groupsBlacklistPattern: "mirrormaker2-cluster"
+{{- end }}
+  metricsConfig:
+    type: jmxPrometheusExporter
+    valueFrom:
+      configMapKeyRef:
+        name: {{ $.Release.Name }}-jmx-exporter
+        key: metrics-config.yml
+
+  logging:
+    type: inline
+    loggers:
+      connect.root.logger.level: "INFO"

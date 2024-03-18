@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mirrormaker-ks
+description: mirrormaker-ks A helm chart to deploy strimzi kafka mirrormaker 2.
+type: application
+version: 0.1.0
+appVersion: "1.17.0"

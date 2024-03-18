@@ -1,0 +1,13 @@
+# Default values for mirrormaker-ks.
+replicaCount: 1
+image:
+  repository: docker.io/nahidupa/custom-mirrormaker
+  tag: "0.0.3"
+
+topics: []
+
+# Strimzi connector version
+connectorVersion: 3.6.1
+
+# bootstrapServers: "localhost:9092"
+bootstrapServers: "set me"

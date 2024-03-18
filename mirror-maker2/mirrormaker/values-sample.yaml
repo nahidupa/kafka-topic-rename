@@ -1,0 +1,10 @@
+topics:
+  - source: foo.customer
+    target: rename.foo.customers
+    numberOfPartitions: 3
+    replicationFactor: 3
+
+bootstrapServers: "cluster-a-kafka-bootstrap.mm2.svc.cluster.local:9092"
+
+image:
+  tag: "0.0.3"
